@@ -15,108 +15,6 @@ const widths = {
 const tickRate = 100;
 const lookahead = 0.5;
 
-const songData = {
-
-    flowerdance: {
-        tracks: {
-            intro: {
-                next: { name: 'main' }
-            },
-            main: {
-                next: { name: 'main' },
-                cuts: [
-                    {t: 15.237, dest: { name: 'outro' }},
-                    {t: 30.473, dest: { name: 'outro' }},
-                    {t: 45.706, dest: { name: 'outro' }},
-                    {t: 60.951, dest: { name: 'outro' }},
-                    {t: 91.427, dest: { name: 'outro' }},
-                    {t: 106.661, dest: { name: 'outro' }},
-                    {t: 121.905, dest: { name: 'outro' }},
-                    {t: 139.042, dest: { name: 'outro' }},
-                    {t: 0, dest: { name: 'outro' }}
-                ]
-            },
-            outro: {
-                next: undefined
-            }
-        }
-    },
-
-    summit: {
-        tracks: {
-            intro: {
-                next: { name: 'intro', offset: 38.441 },
-                fades: ['intro', 'city', 'oldsite', 'resort', 'cliffside', 'finale']
-            },
-            city: {
-                next: { name: 'city', offset: 38.441 },
-                fades: ['intro', 'city', 'oldsite', 'resort', 'cliffside', 'finale']
-            },
-            oldsite: {
-                next: { name: 'oldsite', offset: 38.441 },
-                fades: ['intro', 'city', 'oldsite', 'resort', 'cliffside', 'finale']
-            },
-            resort: {
-                next: { name: 'resort', offset: 38.441 },
-                fades: ['intro', 'city', 'oldsite', 'resort', 'cliffside', 'finale']
-            },
-            cliffside: {
-                next: { name: 'cliffside', offset: 38.441 },
-                fades: ['intro', 'city', 'oldsite', 'resort', 'cliffside', 'finale']
-            },
-            finale: {
-                next: { name: 'finale', offset: 38.441 },
-                fades: ['intro', 'city', 'oldsite', 'resort', 'cliffside', 'finale']
-            }
-        },
-        notes: `1 - base
-2 - city
-3 - site
-4 - resort
-5 - temple
-6 - end`
-    },
-
-    voulezvous: {
-        tracks: {
-            intro: {
-                next: { name: 'main' }
-            },
-            main: {
-                next: { name: 'main' },
-                cuts: [
-                    {t: 56.304, dest: { name: 'outro' }},
-                    {t: 67.701, dest: { name: 'outro' }}, // good
-                    {t: 79.162, dest: { name: 'outro' }}, // good
-                    {t: 94.261, dest: { name: 'outro' }},
-                    {t: 105.649, dest: { name: 'outro' }}, // good
-                    {t: 117.072, dest: { name: 'outro' }}, // good
-                    {t: 139.894, dest: { name: 'outro' }},
-                    {t: 151.314, dest: { name: 'outro' }}, // good
-                    {t: 162.688, dest: { name: 'outro' }}, // good
-                    {t: 0, dest: { name: 'preoutro' }}
-                ]
-            },
-            preoutro: {
-                next: { name: 'preoutro', offset: 10.427 },
-                cuts: [
-                    {t: 10.427, dest: { name: 'outro' }},
-                    {t: 21.874, dest: { name: 'outro' }},
-                    {t: 33.263, dest: { name: 'outro' }},
-                    {t: 44.722, dest: { name: 'outro' }},
-                    {t: 56.111, dest: { name: 'outro' }},
-                    {t: 0, dest: { name: 'outro' }}
-                ]
-            },
-            outro: {
-                next: undefined
-            }
-        },
-        notes: `the first cut in each group of 3 is worse`
-    },
-
-};
-
 const fade = 1;
 const base = 10;
 const curveLen = fade * ctx.sampleRate;
@@ -127,6 +25,16 @@ for (let i = 0; i < curveLen; i++) {
 const expCurve = new Float32Array(curveLen);
 for (let i = 0; i < curveLen; i++) {
     expCurve[i] = 1 - logCurve[i];
+}
+
+function fetchJSON(url) {
+    return new Promise((resolve, reject) => {
+        const request = new XMLHttpRequest();
+        request.open("GET", url, true);
+        request.onload = () => resolve(JSON.parse(request.response));
+        request.onerror = (e) => reject(e);
+        request.send();
+    });
 }
 
 function fetchAudio(url) {
@@ -146,20 +54,20 @@ function decodeAudio(ctx, data) {
     });
 }
 
-async function load(song) {
+async function loadSong(song) {
 
     const msgEl = document.getElementById('msg');
     const msg = s => {
         msgEl.textContent = `[${ctx.currentTime.toFixed(3)}] ${s}`;
     };
 
-    const tracks = songData[song].tracks;
-    msg(`loading ${song}...`);
+    const tracks = song.tracks;
+    msg(`loading ${song.name}...`);
 
     await Promise.all(Object.entries(tracks).map(async ([f, track]) => {
         track.name = f;
         if (!track.cuts) track.cuts = [];
-        track.buf = await decodeAudio(ctx, await fetchAudio(`snd/${song}/${f}.ogg`));
+        track.buf = await decodeAudio(ctx, await fetchAudio(`snd/${song.name}/${f}.ogg`));
         if (track.cuts.length) {
             track.cuts[track.cuts.length-1].t = track.buf.duration;
         }
@@ -229,7 +137,7 @@ async function load(song) {
         start(tracks[script.name], t, script);
     };
 
-    document.getElementById('notes').textContent = songData[song].notes;
+    document.getElementById('notes').textContent = song.notes;
     msg('ready');
 
     let lastDraw = 0, lastGoto = -fade;
@@ -302,16 +210,22 @@ async function load(song) {
 
 }
 
-
-window.addEventListener('load', () => {
+async function load() {
+    const songData = await fetchJSON('songdata.json');
     const btns = document.getElementById('btns');
     for (const k of Object.keys(songData)) {
+        songData[k].name = k;
         const btn = document.createElement('button');
         btn.textContent = k;
         btn.addEventListener('click', () => {
-            load(k);
+            loadSong(songData[k]);
             btns.style.display = 'none';
         });
         btns.appendChild(btn);
     }
+}
+
+
+window.addEventListener('load', () => {
+    void load();
 });

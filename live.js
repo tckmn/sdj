@@ -68,7 +68,7 @@ async function loadSong(song) {
         track.name = f;
         if (!track.cuts) track.cuts = [];
         track.buf = await decodeAudio(ctx, await fetchAudio(`snd/${song.name}/${f}.ogg`));
-        if (track.cuts.length) {
+        if (track.cuts.length && track.cuts[track.cuts.length-1].t === 0) {
             track.cuts[track.cuts.length-1].t = track.buf.duration;
         }
         track.gain = ctx.createGain();
@@ -138,7 +138,7 @@ async function loadSong(song) {
     };
 
     document.getElementById('notes').textContent = song.notes;
-    msg('ready');
+    msg(`${song.name} is ready`);
 
     let lastDraw = 0, lastGoto = -fade;
 
@@ -180,6 +180,14 @@ async function loadSong(song) {
                     track.gain.gain.setValueCurveAtTime(expCurve, lastGoto, fade);
                 }
             }
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            const t = ctx.currentTime + eps;
+            const offset = Math.max(0, Math.min(track.buf.duration - eps, t - startTime + (e.key === 'ArrowLeft' ? -1 : 1)));
+            start(track, t, {
+                offset: offset
+            });
+        } else {
+            console.log(e.key); // TODO remove
         }
     });
 

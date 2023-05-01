@@ -213,6 +213,8 @@ async function loadSong(song) {
 async function load() {
     const songData = await fetchJSON('songdata.json');
     const btns = document.getElementById('btns');
+    const patter = document.getElementById('patter');
+    const singer = document.getElementById('singer');
     for (const k of Object.keys(songData)) {
         songData[k].name = k;
         const btn = document.createElement('button');
@@ -221,7 +223,7 @@ async function load() {
             loadSong(songData[k]);
             btns.style.display = 'none';
         });
-        btns.appendChild(btn);
+        (songData[k].flavor === 'patter' ? patter : singer).appendChild(btn);
     }
 }
 

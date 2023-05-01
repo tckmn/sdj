@@ -26,15 +26,16 @@ function decodeAudio(ctx, data) {
     });
 }
 
-async function loadFlower() {
+async function load() {
 
-    const scripts = {
+    const ctx = new AudioContext();
+
+    const tracks = {
         intro: {
-            defaultNext: 'main',
-            cuts: []
+            next: 'main'
         },
         main: {
-            defaultNext: 'main',
+            next: 'main',
             cuts: [
                 {t: 15.237, dest: 'outro'},
                 {t: 30.473, dest: 'outro'},
@@ -45,13 +46,35 @@ async function loadFlower() {
                 {t: 106.661, dest: 'outro'},
                 {t: 121.905, dest: 'outro'},
                 {t: 139.042, dest: 'outro'},
+                {t: 0, dest: 'outro'},
             ]
         },
         outro: {
-            defaultNext: undefined,
-            cuts: []
+            next: undefined
         }
     };
+
+    for (const [f, track] of Object.entries(tracks)) {
+        track.name = f;
+        if (!track.cuts) track.cuts = [];
+        track.buf = await decodeAudio(ctx, await fetchAudio(`snd/flowerdance/${f}.ogg`));
+        if (track.cuts.length) {
+            track.cuts[track.cuts.length-1].t = track.buf.duration;
+        }
+        track.gain = ctx.createGain();
+        track.gain.connect(ctx.destination);
+        const data = track.buf.getChannelData(0);
+        track.waveform = new Array(cw);
+        for (let i = 0; i < cw; ++i) {
+            const offset = i*data.length/cw | 0;
+            let max = 0, min = 0;
+            for (let j = 0; j < data.length / cw; ++j) {
+                max = Math.max(max, data[offset + j]);
+                min = Math.min(min, data[offset + j]);
+            }
+            track.waveform[i] = { min, max };
+        }
+    }
 
     const drawContainer = document.getElementById('draw');
     drawContainer.style.paddingBottom = ch+'px';
@@ -67,30 +90,7 @@ async function loadFlower() {
     const barCtx = barCnv.getContext('2d');
     barCtx.fillStyle = colors.bar;
 
-    const ctx = new AudioContext();
-
-    const tracks = await Promise.all(['intro', 'main', 'outro']
-        .map(async f => {
-            const buf = await decodeAudio(ctx, await fetchAudio(`snd/flowerdance/${f}.ogg`));
-            const gain = ctx.createGain();
-            gain.connect(ctx.destination);
-            const data = buf.getChannelData(0);
-            const waveform = new Array(cw);
-            for (let i = 0; i < cw; ++i) {
-                const offset = i*data.length/cw | 0;
-                let max = 0, min = 0;
-                for (let j = 0; j < data.length / cw; ++j) {
-                    max = Math.max(max, data[offset + j]);
-                    min = Math.min(min, data[offset + j]);
-                }
-                waveform[i] = { min, max };
-            }
-            return {
-                name: f, buf, gain, waveform
-            };
-        }));
-    let track = tracks[0];
-    let script = scripts[track.name];
+    let track = tracks.intro;
     let startTime;
     let nextTrack;
     let cutActive = -1;
@@ -104,20 +104,14 @@ async function loadFlower() {
             baseCtx.fillRect(i, ch/2 + wf[i].min*cs, 1, (wf[i].max-wf[i].min)*cs);
         }
         baseCtx.fillStyle = colors.cut;
-        for (const cut of scripts[target.name].cuts) {
-            baseCtx.fillRect(xpos(cut.t) - 1, 0, 3, ch);
+        for (const cut of track.cuts) {
+            baseCtx.fillRect(xpos(cut.t) - 2, 0, 3, ch);
         }
-    };
-
-    const setNext = newNext => {
-        nextTrack = newNext;
-        document.getElementById('status').textContent = 'next: ' + newNext;
     };
 
     const start = (target, t, offset = 0) => {
         if (track.source) track.source.stop(t);
         track = target;
-        script = scripts[track.name];
         cutActive = -1;
         startTime = t - offset;
         target.source = ctx.createBufferSource();
@@ -125,7 +119,7 @@ async function loadFlower() {
         target.source.connect(target.gain);
         target.source.start(t, offset);
         fullDraw(target);
-        setNext(script.defaultNext);
+        document.getElementById('status').textContent = 'current: ' + track.name + '; next: ' + track.next;
     };
 
     const msgEl = document.getElementById('msg');
@@ -143,23 +137,20 @@ async function loadFlower() {
                 break;
             case 'w':
                 if (cutActive === -1) {
-                    cutActive = script.cuts.findIndex(cut => t < startTime + cut.t - lookahead);
+                    cutActive = track.cuts.findIndex(cut => t < startTime + cut.t - lookahead);
                     if (cutActive === -1) {
                         msg('no cut');
                     } else {
                         baseCtx.fillStyle = colors.cutActive;
-                        baseCtx.fillRect(xpos(script.cuts[cutActive].t) - 1, 0, 3, ch);
+                        baseCtx.fillRect(xpos(track.cuts[cutActive].t) - 1, 0, 3, ch);
                         msg('cut activated');
                     }
                 } else {
                     baseCtx.fillStyle = colors.cut;
-                    baseCtx.fillRect(xpos(script.cuts[cutActive].t) - 1, 0, 3, ch);
+                    baseCtx.fillRect(xpos(track.cuts[cutActive].t) - 1, 0, 3, ch);
                     cutActive = -1;
                     msg('cut deactivated');
                 }
-                break;
-            case 'e':
-                setNext('outro');
                 break;
         }
     });
@@ -181,10 +172,10 @@ async function loadFlower() {
         if (t >= endTime) {
             clearInterval(intr);
             msg('ended');
-        } else if (endTime - t < lookahead && nextTrack) {
-            start(tracks.find(t => t.name === nextTrack), endTime);
-        } else if (cutActive >= 0 && startTime + script.cuts[cutActive].t - t < lookahead) {
-            start(tracks.find(t => t.name === script.cuts[cutActive].dest), startTime + script.cuts[cutActive].t);
+        } else if (cutActive >= 0 && startTime + track.cuts[cutActive].t - t < lookahead) {
+            start(tracks[track.cuts[cutActive].dest], startTime + track.cuts[cutActive].t);
+        } else if (endTime - t < lookahead && track.next) {
+            start(tracks[track.next], endTime);
         }
     }, tickRate);
 

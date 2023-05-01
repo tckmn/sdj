@@ -215,12 +215,12 @@ async function load() {
     const btns = document.getElementById('btns');
     const patter = document.getElementById('patter');
     const singer = document.getElementById('singer');
-    for (const k of Object.keys(songData)) {
+    for (const k of Object.keys(songData).sort()) {
         songData[k].name = k;
         const btn = document.createElement('button');
         btn.textContent = k;
         btn.addEventListener('click', () => {
-            loadSong(songData[k]);
+            void loadSong(songData[k]);
             btns.style.display = 'none';
         });
         (songData[k].flavor === 'patter' ? patter : singer).appendChild(btn);

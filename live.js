@@ -1,5 +1,3 @@
-const ctx = new AudioContext();
-
 const eps = 0.1;
 const cw = 800, ch = 100, cs = 50;
 const colors = {
@@ -17,7 +15,7 @@ const lookahead = 0.5;
 
 const fade = 1;
 const base = 10;
-const curveLen = fade * ctx.sampleRate;
+const curveLen = fade * 48000; // TODO hardcoded ctx.sampleRate to avoid opening context early
 const logCurve = new Float32Array(curveLen);
 for (let i = 0; i < curveLen; i++) {
     logCurve[curveLen - 1 - i] = Math.log(1 + base*(i/curveLen)) / Math.log(1 + base);
@@ -65,6 +63,8 @@ function shuffle(arr) {
 }
 
 async function loadSong(song) {
+    const ctx = new AudioContext();
+    ctx.suspend();
 
     const msgEl = document.getElementById('msg');
     const msg = s => {
@@ -148,15 +148,14 @@ async function loadSong(song) {
     };
 
     document.getElementById('notes').textContent = Object.entries(song.tracks).map(([k, v]) => `${k}: ${v.buf.duration.toFixed(3)}s`).join('\n') + '\n' + (song.notes || '');
+    start(track, ctx.currentTime + eps);
     msg(`${song.name} is ready`);
 
     let lastDraw = 0, lastGoto = -fade;
 
     document.addEventListener('keydown', e => {
         const t = ctx.currentTime;
-        if (e.key === 'q') {
-            start(track, t + eps);
-        } else if (e.key === 'w') {
+        if (e.key === 'w') {
             if (cutActive === -1) {
                 cutActive = track.cuts.findIndex(cut => t < startTime + cut.t - lookahead);
                 if (cutActive === -1) {
@@ -196,6 +195,12 @@ async function loadSong(song) {
             start(track, t, {
                 offset: offset
             });
+        } else if (e.key === ' ') {
+            if (ctx.state === 'running') {
+                ctx.suspend().then(() => msg('paused'));
+            } else {
+                ctx.resume().then(() => msg('resumed'));
+            }
         } else {
             console.log(e.key); // TODO remove
         }

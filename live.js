@@ -62,11 +62,65 @@ function shuffle(arr) {
     return arr;
 }
 
+class Draw {
+    constructor(container) {
+        this.container = container;
+        this.container.style.paddingBottom = ch+'px';
+
+        this.baseCnv = document.createElement('canvas');
+        this.baseCnv.setAttribute('width', cw+'px');
+        this.baseCnv.setAttribute('height', ch+'px');
+        this.baseCtx = this.baseCnv.getContext('2d');
+        this.container.appendChild(this.baseCnv);
+
+        this.barCnv = document.createElement('canvas');
+        this.barCnv.setAttribute('width', cw+'px');
+        this.barCnv.setAttribute('height', ch+'px');
+        this.barCtx = this.barCnv.getContext('2d');
+        this.barCtx.fillStyle = colors.bar;
+        this.container.appendChild(this.barCnv);
+
+        this.lastDraw = 0;
+    }
+
+    #xpos(track, t) { return Math.max(cw * t / track.buf.duration | 0, 0); }
+
+    draw(track, cutActive) {
+        const wf = track.waveform;
+        this.baseCtx.clearRect(0, 0, cw, ch);
+        this.baseCtx.fillStyle = colors.waveform;
+        for (let i = 0; i < cw; ++i) {
+            this.baseCtx.fillRect(i, ch/2 + wf[i].min*cs, 1, (wf[i].max-wf[i].min)*cs);
+        }
+        for (let i = 0; i < track.cuts.length; ++i) {
+            const cut = track.cuts[i];
+            this.cut(track, track.cuts[i].t, cutActive === i);
+        }
+    }
+
+    cut(track, t, active) {
+        this.baseCtx.fillStyle = active ? colors.cutActive : colors.cut;
+        this.baseCtx.fillRect(this.#xpos(track, t) - Math.ceil(widths.cut/2), 0, widths.cut, ch);
+    }
+
+    bar(track, t) {
+        this.barCtx.clearRect(this.lastDraw - Math.ceil(widths.bar/2), 0, widths.bar, ch);
+        this.lastDraw = this.#xpos(track, t);
+        this.barCtx.fillRect(this.lastDraw - Math.ceil(widths.bar/2), 0, widths.bar, ch);
+    }
+
+    ev(fn) {
+        this.barCnv.addEventListener('click', fn);
+    }
+}
+
 async function loadSong(song, opts = {}) {
     document.getElementById('btns').style.display = 'none';
 
     const ctx = new AudioContext();
     if (opts.play === undefined) ctx.suspend();
+
+    const draw = new Draw(document.getElementById('draw'));
 
     const msgEl = document.getElementById('msg');
     const msg = s => {
@@ -98,40 +152,10 @@ async function loadSong(song, opts = {}) {
         }
     }));
 
-    const drawContainer = document.getElementById('draw');
-    drawContainer.style.paddingBottom = ch+'px';
-
-    const baseCnv = document.getElementById('base');
-    baseCnv.setAttribute('width', cw+'px');
-    baseCnv.setAttribute('height', ch+'px');
-    const baseCtx = baseCnv.getContext('2d');
-
-    const barCnv = document.getElementById('bar');
-    barCnv.setAttribute('width', cw+'px');
-    barCnv.setAttribute('height', ch+'px');
-    const barCtx = barCnv.getContext('2d');
-    barCtx.fillStyle = colors.bar;
-
     let track = tracks[opts.track || 'intro'];
     let startTime;
     let nextTrack;
     let cutActive = -1;
-
-    const xpos = t => Math.max(cw * t / track.buf.duration | 0, 0);
-
-    const fullDraw = target => {
-        const wf = target.waveform;
-        baseCtx.clearRect(0, 0, cw, ch);
-        baseCtx.fillStyle = colors.waveform;
-        for (let i = 0; i < cw; ++i) {
-            baseCtx.fillRect(i, ch/2 + wf[i].min*cs, 1, (wf[i].max-wf[i].min)*cs);
-        }
-        for (let i = 0; i < track.cuts.length; ++i) {
-            const cut = track.cuts[i];
-            baseCtx.fillStyle = cutActive === i ? colors.cutActive : colors.cut;
-            baseCtx.fillRect(xpos(cut.t) - Math.ceil(widths.cut/2), 0, widths.cut, ch);
-        }
-    };
 
     const start = (target, t, opts = {}) => {
         const offset = opts.offset || 0;
@@ -143,7 +167,7 @@ async function loadSong(song, opts = {}) {
         target.source.buffer = target.buf;
         target.source.connect(target.gain);
         target.source.start(t, offset);
-        fullDraw(target);
+        draw.draw(target, cutActive);
         document.getElementById('status').textContent = 'current: ' + track.name + '; next: ' + (track.next ? track.next.name : '[end]');
     };
 
@@ -155,7 +179,7 @@ async function loadSong(song, opts = {}) {
     start(track, ctx.currentTime + eps, { offset: opts.play || 0 });
     msg(`${song.name} is ready`);
 
-    let lastDraw = 0, lastGoto = -fade;
+    let lastGoto = -fade;
 
     document.addEventListener('keydown', e => {
         const t = ctx.currentTime;
@@ -165,13 +189,11 @@ async function loadSong(song, opts = {}) {
                 if (cutActive === -1) {
                     msg('no cut');
                 } else {
-                    baseCtx.fillStyle = colors.cutActive;
-                    baseCtx.fillRect(xpos(track.cuts[cutActive].t) - Math.ceil(widths.cut/2), 0, widths.cut, ch);
+                    draw.cut(track, track.cuts[cutActive].t, 1);
                     msg('cut activated');
                 }
             } else {
-                baseCtx.fillStyle = colors.cut;
-                baseCtx.fillRect(xpos(track.cuts[cutActive].t) - Math.ceil(widths.cut/2), 0, widths.cut, ch);
+                draw.cut(track, track.cuts[cutActive].t, 0);
                 cutActive = -1;
                 msg('cut deactivated');
             }
@@ -212,7 +234,7 @@ async function loadSong(song, opts = {}) {
         }
     });
 
-    barCnv.addEventListener('mousedown', e => {
+    draw.ev(e => {
         const t = ctx.currentTime + eps;
         start(track, t, {
             offset: (e.offsetX / cw) * track.buf.duration
@@ -223,9 +245,7 @@ async function loadSong(song, opts = {}) {
         const t = ctx.currentTime;
         const endTime = startTime + track.buf.duration;
 
-        barCtx.clearRect(lastDraw - Math.ceil(widths.bar/2), 0, widths.bar, ch);
-        lastDraw = xpos(t - startTime);
-        barCtx.fillRect(lastDraw - Math.ceil(widths.bar/2), 0, widths.bar, ch);
+        draw.bar(track, t - startTime);
 
         if (t >= endTime) {
             clearInterval(intr);

@@ -1,2 +1,4 @@
+html, body { background-color: #000; color: #d8d8d8; }
+button { background-color: #181818; color: #d8d8d8; }
 #draw { position: relative; }
 #draw > canvas { position: absolute; }

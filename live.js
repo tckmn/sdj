@@ -3,7 +3,7 @@ const ctx = new AudioContext();
 const eps = 0.1;
 const cw = 800, ch = 100, cs = 50;
 const colors = {
-    waveform:  '#444',
+    waveform:  '#888',
     cut:       '#00f',
     cutActive: '#f0f',
     bar:       '#f00'

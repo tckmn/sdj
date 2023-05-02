@@ -1,65 +1,21 @@
 import { Draw } from './draw.js';
+import { Fade } from './fade.js';
+import { fetchAudio, fetchJSON, decodeAudio, shuffle } from './util.js';
 
 const eps = 0.1;
 const tickRate = 100;
 const lookahead = 0.5;
 
-const fade = 1;
-const base = 10;
-const curveLen = fade * 48000; // TODO hardcoded ctx.sampleRate to avoid opening context early
-const logCurve = new Float32Array(curveLen);
-for (let i = 0; i < curveLen; i++) {
-    logCurve[curveLen - 1 - i] = Math.log(1 + base*(i/curveLen)) / Math.log(1 + base);
-}
-const expCurve = new Float32Array(curveLen);
-for (let i = 0; i < curveLen; i++) {
-    expCurve[i] = 1 - logCurve[i];
-}
-
-function fetchJSON(url) {
-    return new Promise((resolve, reject) => {
-        const request = new XMLHttpRequest();
-        request.open("GET", url, true);
-        request.onload = () => resolve(JSON.parse(request.response));
-        request.onerror = (e) => reject(e);
-        request.send();
-    });
-}
-
-function fetchAudio(url) {
-    return new Promise((resolve, reject) => {
-        const request = new XMLHttpRequest();
-        request.open("GET", url, true);
-        request.responseType = "arraybuffer";
-        request.onload = () => resolve(request.response);
-        request.onerror = (e) => reject(e);
-        request.send();
-    });
-}
-
-function decodeAudio(ctx, data) {
-    return new Promise((resolve, reject) => {
-        ctx.decodeAudioData(data, resolve, reject);
-    });
-}
-
-function shuffle(arr) {
-    for (let i = arr.length - 1; i > 0; --i) {
-        const j = Math.random() * (i + 1) | 0;
-        const tmp = arr[i];
-        arr[i] = arr[j];
-        arr[j] = tmp;
-    }
-    return arr;
-}
-
 async function loadSong(song, opts = {}) {
     document.getElementById('btns').style.display = 'none';
 
     const ctx = new AudioContext();
+    const main = ctx.createGain();
+    main.connect(ctx.destination);
     if (opts.play === undefined) ctx.suspend();
 
     const draw = new Draw(document.getElementById('draw'));
+    const fade = new Fade();
 
     const msgEl = document.getElementById('msg');
     const msg = s => {
@@ -77,7 +33,7 @@ async function loadSong(song, opts = {}) {
             track.cuts[track.cuts.length-1].t = track.buf.duration;
         }
         track.gain = ctx.createGain();
-        track.gain.connect(ctx.destination);
+        track.gain.connect(main);
         track.waveform = draw.waveform(track.buf.getChannelData(0));
     }));
 
@@ -108,8 +64,6 @@ async function loadSong(song, opts = {}) {
     start(track, ctx.currentTime + eps, { offset: opts.play || 0 });
     msg(`${song.name} is ready`);
 
-    let lastGoto = -fade;
-
     document.addEventListener('keydown', e => {
         const t = ctx.currentTime;
         if (e.key === 'w') {
@@ -128,22 +82,25 @@ async function loadSong(song, opts = {}) {
             }
         } else if (e.key === 'r') {
             start(tracks.intro, t + eps);
+        } else if (e.key === 'f') {
+            msg('fadeout');
+            fade.fadeOut(main, t+eps, Fade.GLOBAL);
         } else if (/[1-9]/.test(e.key)) {
             const newTrack = track.fades[+e.key - 1];
             if (newTrack) {
                 if (track.name === newTrack) {
                     msg('no fade to self');
-                } else if (t - lastGoto < fade + eps) {
+                } else if (!fade.ready(t)) {
                     msg('still fading');
                 } else {
-                    lastGoto = t + eps*2;
-                    track.gain.gain.setValueCurveAtTime(logCurve, lastGoto, fade);
-                    start(tracks[newTrack], lastGoto, {
-                        stopTime: lastGoto + fade,
-                        offset: lastGoto - startTime
+                    const fadeTime = t + eps*2;
+                    fade.fadeOut(track.gain, fadeTime, Fade.RT);
+                    start(tracks[newTrack], fadeTime, {
+                        stopTime: fadeTime + Fade.RT,
+                        offset: fadeTime - startTime
                     });
                     track.gain.gain.setValueAtTime(0, t+eps);
-                    track.gain.gain.setValueCurveAtTime(expCurve, lastGoto, fade);
+                    fade.fadeIn(track.gain, fadeTime, Fade.RT);
                 }
             }
         } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {

@@ -126,21 +126,23 @@ async function loadSong(song, opts = {}) {
         for (let i = 0; i < cw; ++i) {
             baseCtx.fillRect(i, ch/2 + wf[i].min*cs, 1, (wf[i].max-wf[i].min)*cs);
         }
-        baseCtx.fillStyle = colors.cut;
-        for (const cut of track.cuts) {
+        for (let i = 0; i < track.cuts.length; ++i) {
+            const cut = track.cuts[i];
+            baseCtx.fillStyle = cutActive === i ? colors.cutActive : colors.cut;
             baseCtx.fillRect(xpos(cut.t) - Math.ceil(widths.cut/2), 0, widths.cut, ch);
         }
     };
 
     const start = (target, t, opts = {}) => {
+        const offset = opts.offset || 0;
         if (track.source) track.source.stop(opts.stopTime || t);
+        if (cutActive !== -1 && (track !== target || offset >= track.cuts[cutActive].t - lookahead)) cutActive = -1;
         track = target;
-        cutActive = -1;
-        startTime = t - (opts.offset || 0);
+        startTime = t - offset;
         target.source = ctx.createBufferSource();
         target.source.buffer = target.buf;
         target.source.connect(target.gain);
-        target.source.start(t, opts.offset || 0);
+        target.source.start(t, offset);
         fullDraw(target);
         document.getElementById('status').textContent = 'current: ' + track.name + '; next: ' + (track.next ? track.next.name : '[end]');
     };

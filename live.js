@@ -62,9 +62,11 @@ function shuffle(arr) {
     return arr;
 }
 
-async function loadSong(song) {
+async function loadSong(song, opts = {}) {
+    document.getElementById('btns').style.display = 'none';
+
     const ctx = new AudioContext();
-    ctx.suspend();
+    if (opts.play === undefined) ctx.suspend();
 
     const msgEl = document.getElementById('msg');
     const msg = s => {
@@ -110,7 +112,7 @@ async function loadSong(song) {
     const barCtx = barCnv.getContext('2d');
     barCtx.fillStyle = colors.bar;
 
-    let track = tracks.intro;
+    let track = tracks[opts.track || 'intro'];
     let startTime;
     let nextTrack;
     let cutActive = -1;
@@ -148,7 +150,7 @@ async function loadSong(song) {
     };
 
     document.getElementById('notes').textContent = Object.entries(song.tracks).map(([k, v]) => `${k}: ${v.buf.duration.toFixed(3)}s`).join('\n') + '\n' + (song.notes || '');
-    start(track, ctx.currentTime + eps);
+    start(track, ctx.currentTime + eps, { offset: opts.play || 0 });
     msg(`${song.name} is ready`);
 
     let lastDraw = 0, lastGoto = -fade;
@@ -240,7 +242,16 @@ const hotkeys = shuffle([
     'h', 'j', 'k', 'l', 'z', 'x', 'c', 'v', 'b', 'n', 'm'
 ]);
 
-async function load() {
+window.addEventListener('load', async () => {
+    const songData = await fetchJSON('songdata.json');
+    for (const k of Object.keys(songData)) songData[k].name = k;
+
+    if (location.search) {
+        const opts = Object.fromEntries(new URLSearchParams('name=' + location.search.slice(1)).entries());
+        void loadSong(songData[opts.name], opts);
+        return;
+    }
+
     const keytbl = {};
     const hotkey = e => {
         const btn = keytbl[e.key];
@@ -248,12 +259,10 @@ async function load() {
     };
     document.addEventListener('keydown', hotkey);
 
-    const songData = await fetchJSON('songdata.json');
-    const btns = document.getElementById('btns');
     const patter = document.getElementById('patter');
     const singer = document.getElementById('singer');
+
     for (const k of Object.keys(songData).sort()) {
-        songData[k].name = k;
         const btn = document.createElement('button');
         const hk = hotkeys.shift();
         keytbl[hk] = btn;
@@ -261,13 +270,7 @@ async function load() {
         btn.addEventListener('click', () => {
             document.removeEventListener('keydown', hotkey);
             void loadSong(songData[k]);
-            btns.style.display = 'none';
         });
         (songData[k].flavor === 'patter' ? patter : singer).appendChild(btn);
     }
-}
-
-
-window.addEventListener('load', () => {
-    void load();
 });

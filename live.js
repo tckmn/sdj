@@ -137,7 +137,7 @@ async function loadSong(song) {
         start(tracks[script.name], t, script);
     };
 
-    document.getElementById('notes').textContent = song.notes;
+    document.getElementById('notes').textContent = Object.entries(song.tracks).map(([k, v]) => `${k}: ${v.buf.duration.toFixed(3)}s`).join('\n') + '\n' + (song.notes || '');
     msg(`${song.name} is ready`);
 
     let lastDraw = 0, lastGoto = -fade;

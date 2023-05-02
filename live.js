@@ -54,6 +54,16 @@ function decodeAudio(ctx, data) {
     });
 }
 
+function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; --i) {
+        const j = Math.random() * (i + 1) | 0;
+        const tmp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = tmp;
+    }
+    return arr;
+}
+
 async function loadSong(song) {
 
     const msgEl = document.getElementById('msg');
@@ -218,7 +228,19 @@ async function loadSong(song) {
 
 }
 
+const hotkeys = shuffle([
+    'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', 'a', 's', 'd', 'f', 'g',
+    'h', 'j', 'k', 'l', 'z', 'x', 'c', 'v', 'b', 'n', 'm'
+]);
+
 async function load() {
+    const keytbl = {};
+    const hotkey = e => {
+        const btn = keytbl[e.key];
+        if (btn) btn.click();
+    };
+    document.addEventListener('keydown', hotkey);
+
     const songData = await fetchJSON('songdata.json');
     const btns = document.getElementById('btns');
     const patter = document.getElementById('patter');
@@ -226,8 +248,11 @@ async function load() {
     for (const k of Object.keys(songData).sort()) {
         songData[k].name = k;
         const btn = document.createElement('button');
-        btn.textContent = k;
+        const hk = hotkeys.shift();
+        keytbl[hk] = btn;
+        btn.textContent = `[${hk}] ${k}`;
         btn.addEventListener('click', () => {
+            document.removeEventListener('keydown', hotkey);
             void loadSong(songData[k]);
             btns.style.display = 'none';
         });

@@ -171,6 +171,8 @@ async function loadSong(song) {
                 cutActive = -1;
                 msg('cut deactivated');
             }
+        } else if (e.key === 'r') {
+            start(tracks.intro, t + eps);
         } else if (/[1-9]/.test(e.key)) {
             const newTrack = track.fades[+e.key - 1];
             if (newTrack) {

@@ -1,6 +1,24 @@
-html, body { background-color: #000; color: #d8d8d8; }
+html, body { background-color: #000; color: #d8d8d8; font: 11pt sans-serif; }
 button { border: 1px solid #585858; background-color: #181818; color: #d8d8d8; font: 8pt monospace; padding: 2px; margin: 0 2px; }
 button:hover { background-color: #282828; }
 button:active { background-color: #383838; }
-#draw { position: relative; }
-#draw > canvas { position: absolute; }
+
+#live { display: flex; }
+#live #audio { flex: 1; }
+#live #draw { position: relative; }
+#live #draw > canvas { position: absolute; }
+#live #info div.boy, #live #info div.girl { width: 20px; height: 20px; display: inline-flex; border: 1px solid #888888; align-items: center; justify-content: center; }
+#live #info div.girl { border-radius: 20px; }
+#live #info td { text-align: center; }
+#live #info input { width: 5rem; color: #d8d8d8; background-color: #181818; border: 1px solid #d8d8d8; text-align: center; }
+#live #info #timer { display: flex; }
+#live #info #timer #time { flex: 1; font-size: 16pt; }
+#live #info #timer button { padding: 0 10px; }
+
+#text { display: flex; }
+#text #tags > span { border: 1px solid #585858; padding: 2px 5px; margin: 0 2px; cursor: pointer; user-select: none; display: inline-block; }
+#text #tags > span.yes { background-color: #146114; }
+#text #tags > span.no { background-color: #7f0707; }
+#text #seqs > div { padding: 3px; cursor: pointer; }
+#text #seqs > div:hover { background-color: #324363; }
+#text #seqlist { max-width: 25%; }

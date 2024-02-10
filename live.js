@@ -110,6 +110,7 @@ async function loadSong(song, opts = {}) {
                 offset: offset
             });
         } else if (e.key === ' ') {
+            e.preventDefault();
             if (ctx.state === 'running') {
                 ctx.suspend().then(() => msg('paused'));
             } else {

@@ -25,7 +25,8 @@ export function decodeAudio(ctx, data) {
     });
 }
 
-export function shuffle(arr) {
+export function shuffle(arrin) {
+    const arr = arrin.slice();
     for (let i = arr.length - 1; i > 0; --i) {
         const j = Math.random() * (i + 1) | 0;
         const tmp = arr[i];

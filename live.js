@@ -1,6 +1,6 @@
 import { Draw } from './draw.js';
 import { Fade } from './fade.js';
-import { fetchAudio, fetchJSON, decodeAudio, shuffle } from './util.js';
+import { fetchAudio, fetchJSON, decodeAudio } from './util.js';
 
 const eps = 0.1;
 const tickRate = 100;
@@ -82,7 +82,7 @@ async function loadSong(song, opts = {}) {
             }
         } else if (e.key === 'r') {
             start(tracks.intro, t + eps);
-        } else if (e.key === 'f') {
+        } else if (e.key === 'e') {
             msg('fadeout');
             fade.fadeOut(main, t+eps, Fade.GLOBAL);
         } else if (/[1-9]/.test(e.key)) {
@@ -146,11 +146,6 @@ async function loadSong(song, opts = {}) {
 
 }
 
-const hotkeys = shuffle([
-    'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', 'a', 's', 'd', 'f', 'g',
-    'h', 'j', 'k', 'l', 'z', 'x', 'c', 'v', 'b', 'n', 'm'
-]);
-
 window.addEventListener('load', async () => {
     const songData = await fetchJSON('songdata.json');
     for (const k of Object.keys(songData)) songData[k].name = k;
@@ -161,23 +156,14 @@ window.addEventListener('load', async () => {
         return;
     }
 
-    const keytbl = {};
-    const hotkey = e => {
-        const btn = keytbl[e.key];
-        if (btn) btn.click();
-    };
-    document.addEventListener('keydown', hotkey);
-
     const patter = document.getElementById('patter');
     const singer = document.getElementById('singer');
 
     for (const k of Object.keys(songData).sort()) {
         const btn = document.createElement('button');
-        const hk = hotkeys.shift();
-        keytbl[hk] = btn;
-        btn.textContent = `[${hk}] ${k}`;
+        btn.classList.add('hk');
+        btn.textContent = k;
         btn.addEventListener('click', () => {
-            document.removeEventListener('keydown', hotkey);
             void loadSong(songData[k]);
         });
         (songData[k].flavor === 'patter' ? patter : singer).appendChild(btn);

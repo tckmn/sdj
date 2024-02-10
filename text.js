@@ -1,4 +1,4 @@
-import { fetchJSON } from './util.js';
+import { fetchJSON, shuffle } from './util.js';
 
 // TODO move these globals into a class or something
 let seqData;
@@ -21,6 +21,7 @@ function renderTag(s, cls, cb) {
     const t = document.createElement('span');
     t.textContent = s;
     t.classList.add(cls);
+    t.classList.add('hk');
     t.addEventListener('click', cb);
     return t;
 }
@@ -71,6 +72,12 @@ function render() {
     }
 }
 
+const hotkeys = [
+    'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', 'a', 's', 'd', 'f', 'g',
+    'h', 'j', 'k', 'l', 'z', 'x', 'c', 'v', 'b', 'n', 'm',
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
+];
+
 window.addEventListener('load', async () => {
     seqData = await fetchJSON('seq.json');
     render();
@@ -108,4 +115,35 @@ window.addEventListener('load', async () => {
             if (e.key === 'Escape') ipt.blur();
         });
     }
+
+    // ok this stuff *definitely* goes somewhere else
+    let keymap = {};
+    document.addEventListener('keydown', e => {
+        if (keymap[e.key]) {
+            e.stopImmediatePropagation();
+            for (const elt of Array.from(document.getElementsByClassName('hkpop'))) {
+                elt.parentNode.removeChild(elt);
+            }
+            if (keymap[e.key].tagName === 'INPUT') keymap[e.key].focus();
+            else keymap[e.key].click();
+            keymap = {};
+        } else if (e.key === 'f') {
+            e.stopImmediatePropagation();
+            const shuf = shuffle(hotkeys);
+            for (const elt of document.getElementsByClassName('hk')) {
+                console.log(elt);
+                const box = elt.getBoundingClientRect();
+                if (box.top > window.innerHeight || box.bottom < 0) continue;
+                const hk = shuf.shift();
+                if (!hk) break;
+                keymap[hk] = elt;
+                const popup = document.createElement('div');
+                popup.classList.add('hkpop');
+                popup.textContent = hk;
+                popup.style.top = box.top+'px';
+                popup.style.left = box.left+'px';
+                document.body.appendChild(popup);
+            }
+        }
+    });
 });

@@ -1,7 +1,7 @@
 const cw = 800, ch = 100, cs = 50;
 const colors = {
     waveform:  '#888',
-    cut:       '#00f',
+    cut:       ['#00f', '#0f0'],
     cutActive: '#f0f',
     bar:       '#f00'
 };
@@ -42,13 +42,13 @@ export class Draw {
         }
         for (let i = 0; i < track.cuts.length; ++i) {
             const cut = track.cuts[i];
-            this.cut(track, track.cuts[i].t, cutActive === i);
+            this.cut(track, cut, cutActive === i);
         }
     }
 
-    cut(track, t, active) {
-        this.baseCtx.fillStyle = active ? colors.cutActive : colors.cut;
-        this.baseCtx.fillRect(this.#xpos(track, t) - Math.ceil(widths.cut/2), 0, widths.cut, ch);
+    cut(track, cut, active) {
+        this.baseCtx.fillStyle = active ? colors.cutActive : colors.cut[cut.color || 0];
+        this.baseCtx.fillRect(this.#xpos(track, cut.t) - Math.ceil(widths.cut/2), 0, widths.cut, ch);
     }
 
     bar(track, t) {

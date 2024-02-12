@@ -1,0 +1,18 @@
+1-9 - fade
+
+ q  - green cut
+ w  - blue cut
+ e  - end (fadeout)
+ r  - restart song
+ t  - **timer
+
+ a  - **add tag
+ s  - **subtract tag
+ d  - **write down people in sight square
+
+ z  - **open sequence
+ x  - close leftmost sequence
+ c  - mark leftmost sequence as called
+
+spc - pause/play, unpause
+←/→ - scrub

@@ -19,8 +19,13 @@ button:active { background-color: #383838; }
 #text #tags > span { border: 1px solid #585858; padding: 2px 5px; margin: 0 2px; cursor: pointer; user-select: none; display: inline-block; }
 #text #tags > span.yes { background-color: #146114; }
 #text #tags > span.no { background-color: #7f0707; }
+#text #tags > span>span { font-size: 8pt; margin-right: 3px; color: #b8b8b8; }
 #text #seqs > div { padding: 3px; cursor: pointer; }
 #text #seqs > div:hover { background-color: #324363; }
-#text #seqlist { max-width: 25%; }
+#text > #seqlist { max-width: 25%; margin-left: 0px; padding-left: 0px; }
+#text > div { max-width: 15%; padding: 0 10px; margin: 0 10px; }
+#text > div:nth-child(2n) { background-color: #282828; }
+#text p.btns { display: flex; justify-content: space-around; }
+#text p.name { font-weight: bold; font-size: 10pt; text-align: center; }
 
 .hkpop { font: 10pt monospace; position: fixed; background-color: rgba(255, 255, 100, 0.5); color: #181818; padding: 3px; font-weight: bold; }

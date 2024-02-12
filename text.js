@@ -1,5 +1,7 @@
 import { fetchJSON, shuffle } from './util.js';
 
+const LS_KEY = 'sdj_seqs_called';
+
 // TODO move these globals into a class or something
 let seqData;
 const yes = new Set(), no = new Set();
@@ -9,6 +11,36 @@ function pad(s, len) { return s.length < len ? '0'+s : s; }
 
 function viewSeq(seq) {
     const cont = document.createElement('div');
+
+    const btns = document.createElement('p');
+    const addbtn = (lbl, cb) => {
+        const btn = document.createElement('button');
+        btn.textContent = lbl;
+        btn.addEventListener('click', cb);
+        btns.appendChild(btn);
+    };
+    addbtn('close', () => {
+        cont.parentNode.removeChild(cont);
+    });
+    addbtn('called', () => {
+        cont.parentNode.removeChild(cont);
+        localStorage.setItem(LS_KEY, (localStorage.getItem(LS_KEY) || '') + seq.date + '.');
+        render();
+    });
+    addbtn('yeet', () => {
+        cont.parentNode.appendChild(cont);
+    });
+    addbtn('yoink', () => {
+        cont.parentNode.insertBefore(cont, cont.parentNode.children[1]);
+    });
+    btns.classList.add('btns');
+    cont.appendChild(btns);
+
+    const name = document.createElement('p');
+    name.textContent = seq.periphery + ' ' + seq.name;
+    name.classList.add('name');
+    cont.appendChild(name);
+
     for (const call of seq.calls) {
         const line = document.createElement('p');
         line.textContent = call;
@@ -17,10 +49,16 @@ function viewSeq(seq) {
     document.getElementById('text').appendChild(cont);
 }
 
+// dumb lol
 function renderTag(s, cls, cb) {
     const t = document.createElement('span');
-    t.textContent = s;
-    t.classList.add(cls);
+    if (typeof cls === 'string') t.classList.add(cls);
+    else {
+        const lbl = document.createElement('span');
+        lbl.textContent = '['+cls+']';
+        t.appendChild(lbl);
+    }
+    t.appendChild(document.createTextNode(s));
     t.classList.add('hk');
     t.addEventListener('click', cb);
     return t;
@@ -39,6 +77,14 @@ function render() {
     clear(tagsCont); clear(seqsCont);
 
     const tags = new Set(seqData.flatMap(x => x.tags));
+    const called = (localStorage.getItem(LS_KEY) || '').split('.');
+    const filtered = seqData.filter(seq => {
+        if (called.indexOf(seq.date) !== -1) return false;
+        const ts = new Set(seq.tags);
+        if ([...yes].some(x => !ts.has(x))) return false;
+        if ([...no].some(x => ts.has(x))) return false;
+        return true;
+    });
 
     for (const s of yes) {
         tagsCont.appendChild(renderTag(s, 'yes', () => {
@@ -56,7 +102,7 @@ function render() {
 
     for (const s of tags) {
         if (yes.has(s) || no.has(s)) continue;
-        tagsCont.appendChild(renderTag(s, 'off', e => {
+        tagsCont.appendChild(renderTag(s, filtered.filter(seq => seq.tags.indexOf(s) !== -1).length, e => {
             e.preventDefault();
             if (e.ctrlKey) no.add(s);
             else yes.add(s);
@@ -64,10 +110,7 @@ function render() {
         }));
     }
 
-    for (const seq of seqData) {
-        const ts = new Set(seq.tags);
-        if ([...yes].some(x => !ts.has(x))) continue;
-        if ([...no].some(x => ts.has(x))) continue;
+    for (const seq of filtered) {
         seqsCont.appendChild(renderSeq(seq, seq.tags.filter(t => !yes.has(t))));
     }
 }
@@ -107,6 +150,10 @@ window.addEventListener('load', async () => {
         intr = prevStart = undefined;
         stored = 0;
         time.textContent = '00:00.000';
+    });
+
+    document.getElementById('tip').addEventListener('click', () => {
+        localStorage.setItem(LS_KEY, (localStorage.getItem(LS_KEY) || '') + '|');
     });
 
     for (const ipt of document.getElementById('info').getElementsByTagName('input')) {

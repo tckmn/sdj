@@ -41,8 +41,10 @@ async function loadSong(song, opts = {}) {
     let startTime;
     let nextTrack;
     let cutActive = -1;
+    let paused = false;
 
     const start = (target, t, opts = {}) => {
+        paused = opts.paused;
         const offset = opts.offset || 0;
         if (track.source) track.source.stop(opts.stopTime || t);
         if (cutActive !== -1 && (track !== target || offset >= track.cuts[cutActive].t - lookahead)) cutActive = -1;
@@ -51,7 +53,7 @@ async function loadSong(song, opts = {}) {
         target.source = ctx.createBufferSource();
         target.source.buffer = target.buf;
         target.source.connect(target.gain);
-        target.source.start(t, offset);
+        if (!paused) target.source.start(t, offset);
         draw.draw(target, cutActive);
         document.getElementById('status').textContent = 'current: ' + track.name + '; next: ' + (track.next ? track.next.name : '[end]');
     };
@@ -66,17 +68,18 @@ async function loadSong(song, opts = {}) {
 
     document.addEventListener('keydown', e => {
         const t = ctx.currentTime;
-        if (e.key === 'w') {
+        const cutColor = { w: 0, q: 1 }[e.key];
+        if (cutColor !== undefined) {
             if (cutActive === -1) {
-                cutActive = track.cuts.findIndex(cut => t < startTime + cut.t - lookahead);
+                cutActive = track.cuts.findIndex(cut => (cut.color || 0) === cutColor && t < startTime + cut.t - lookahead);
                 if (cutActive === -1) {
                     msg('no cut');
                 } else {
-                    draw.cut(track, track.cuts[cutActive].t, 1);
+                    draw.cut(track, track.cuts[cutActive], 1);
                     msg('cut activated');
                 }
             } else {
-                draw.cut(track, track.cuts[cutActive].t, 0);
+                draw.cut(track, track.cuts[cutActive], 0);
                 cutActive = -1;
                 msg('cut deactivated');
             }
@@ -86,7 +89,7 @@ async function loadSong(song, opts = {}) {
             msg('fadeout');
             fade.fadeOut(main, t+eps, Fade.GLOBAL);
         } else if (/[1-9]/.test(e.key)) {
-            const newTrack = track.fades[+e.key - 1];
+            const newTrack = track.fades && track.fades[+e.key - 1];
             if (newTrack) {
                 if (track.name === newTrack) {
                     msg('no fade to self');
@@ -111,7 +114,12 @@ async function loadSong(song, opts = {}) {
             });
         } else if (e.key === ' ') {
             e.preventDefault();
-            if (ctx.state === 'running') {
+            if (paused) {
+                msg('unpausing');
+                paused = false;
+                startTime = t+eps;
+                track.source.start(startTime);
+            } else if (ctx.state === 'running') {
                 ctx.suspend().then(() => msg('paused'));
             } else {
                 ctx.resume().then(() => msg('resumed'));
@@ -129,6 +137,8 @@ async function loadSong(song, opts = {}) {
     });
 
     const intr = setInterval(() => {
+        if (paused) return;
+
         const t = ctx.currentTime;
         const endTime = startTime + track.buf.duration;
 

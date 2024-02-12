@@ -3,7 +3,7 @@ import { Fade } from './fade.js';
 import { fetchAudio, fetchJSON, decodeAudio } from './util.js';
 
 const eps = 0.1;
-const tickRate = 100;
+const tickRate = 20;
 const lookahead = 0.5;
 
 async function loadSong(song, opts = {}) {
@@ -21,6 +21,8 @@ async function loadSong(song, opts = {}) {
     const msg = s => {
         msgEl.textContent = `[${ctx.currentTime.toFixed(3)}] ${s}`;
     };
+
+    const metronome = document.getElementById('metronome');
 
     const tracks = song.tracks;
     msg(`loading ${song.name}...`);
@@ -151,6 +153,11 @@ async function loadSong(song, opts = {}) {
             startScript(track.cuts[cutActive].dest, startTime + track.cuts[cutActive].t);
         } else if (endTime - t < lookahead && track.next) {
             startScript(track.next, endTime);
+        }
+
+        if (track.bpm) {
+            const beat = track.bpm[0] * (t - startTime - track.bpm[1]) / 60;
+            metronome.style.backgroundColor = beat % 1 < 0.25 ? beat % 4 < 1 ? '#ff0' : '#4b0' : '#585858';
         }
     }, tickRate);
 

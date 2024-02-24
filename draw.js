@@ -74,4 +74,10 @@ export class Draw {
         }
         return arr;
     }
+
+    clear() {
+        this.baseCtx.clearRect(0, 0, cw, ch);
+        this.barCtx.clearRect(0, 0, cw, ch);
+        this.lastDraw = 0;
+    }
 }

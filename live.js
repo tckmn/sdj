@@ -1,177 +1,17 @@
-import { Draw } from './draw.js';
-import { Fade } from './fade.js';
-import { fetchAudio, fetchJSON, decodeAudio } from './util.js';
-
-const eps = 0.1;
-const tickRate = 20;
-const lookahead = 0.5;
-
-async function loadSong(song, opts = {}) {
-    document.getElementById('btns').style.display = 'none';
-
-    const ctx = new AudioContext();
-    const main = ctx.createGain();
-    main.connect(ctx.destination);
-    if (opts.play === undefined) ctx.suspend();
-
-    const draw = new Draw(document.getElementById('draw'));
-    const fade = new Fade();
-
-    const msgEl = document.getElementById('msg');
-    const msg = s => {
-        msgEl.textContent = `[${ctx.currentTime.toFixed(3)}] ${s}`;
-    };
-
-    const metronome = document.getElementById('metronome');
-
-    const tracks = song.tracks;
-    msg(`loading ${song.name}...`);
-
-    await Promise.all(Object.entries(tracks).map(async ([f, track]) => {
-        track.name = f;
-        if (!track.cuts) track.cuts = [];
-        track.buf = await decodeAudio(ctx, await fetchAudio(`snd/${song.name}/${f}.ogg`));
-        if (track.cuts.length && track.cuts[track.cuts.length-1].t === 0) {
-            track.cuts[track.cuts.length-1].t = track.buf.duration;
-        }
-        track.gain = ctx.createGain();
-        track.gain.connect(main);
-        track.waveform = draw.waveform(track.buf.getChannelData(0));
-    }));
-
-    let track = tracks[opts.track || 'intro'];
-    let startTime;
-    let nextTrack;
-    let cutActive = -1;
-    let paused = false;
-
-    const start = (target, t, opts = {}) => {
-        paused = opts.paused;
-        const offset = opts.offset || 0;
-        if (track.source) track.source.stop(opts.stopTime || t);
-        if (cutActive !== -1 && (track !== target || offset >= track.cuts[cutActive].t - lookahead)) cutActive = -1;
-        track = target;
-        startTime = t - offset;
-        target.source = ctx.createBufferSource();
-        target.source.buffer = target.buf;
-        target.source.connect(target.gain);
-        if (!paused) target.source.start(t, offset);
-        draw.draw(target, cutActive);
-        document.getElementById('status').textContent = 'current: ' + track.name + '; next: ' + (track.next ? track.next.name : '[end]');
-    };
-
-    const startScript = (script, t) => {
-        start(tracks[script.name], t, script);
-    };
-
-    document.getElementById('notes').textContent = Object.entries(song.tracks).map(([k, v]) => `${k}: ${v.buf.duration.toFixed(3)}s`).join('\n') + '\n' + (song.notes || '');
-    start(track, ctx.currentTime + eps, { offset: opts.play || 0 });
-    msg(`${song.name} is ready`);
-
-    document.addEventListener('keydown', e => {
-        const t = ctx.currentTime;
-        const cutColor = { w: 0, q: 1 }[e.key];
-        if (cutColor !== undefined) {
-            if (cutActive === -1) {
-                cutActive = track.cuts.findIndex(cut => (cut.color || 0) === cutColor && t < startTime + cut.t - lookahead);
-                if (cutActive === -1) {
-                    msg('no cut');
-                } else {
-                    draw.cut(track, track.cuts[cutActive], 1);
-                    msg('cut activated');
-                }
-            } else {
-                draw.cut(track, track.cuts[cutActive], 0);
-                cutActive = -1;
-                msg('cut deactivated');
-            }
-        } else if (e.key === 'r') {
-            start(tracks.intro, t + eps, { stopTime: t });
-        } else if (e.key === 'e') {
-            msg('fadeout');
-            fade.fadeOut(main, t+eps, Fade.GLOBAL);
-        } else if (/[1-9]/.test(e.key)) {
-            const newTrack = track.fades && track.fades[+e.key - 1];
-            if (newTrack) {
-                if (track.name === newTrack) {
-                    msg('no fade to self');
-                } else if (!fade.ready(t)) {
-                    msg('still fading');
-                } else {
-                    const fadeTime = t + eps*2;
-                    fade.fadeOut(track.gain, fadeTime, Fade.RT);
-                    start(tracks[newTrack], fadeTime, {
-                        stopTime: fadeTime + Fade.RT,
-                        offset: fadeTime - startTime
-                    });
-                    track.gain.gain.setValueAtTime(0, t+eps);
-                    fade.fadeIn(track.gain, fadeTime, Fade.RT);
-                }
-            }
-        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-            const t = ctx.currentTime + eps;
-            const offset = Math.max(0, Math.min(track.buf.duration - eps, t - startTime + (e.key === 'ArrowLeft' ? -1 : 1)));
-            start(track, t, {
-                offset: offset
-            });
-        } else if (e.key === ' ') {
-            e.preventDefault();
-            if (paused) {
-                msg('unpausing');
-                paused = false;
-                startTime = t+eps;
-                track.source.start(startTime);
-            } else if (ctx.state === 'running') {
-                ctx.suspend().then(() => msg('paused'));
-            } else {
-                ctx.resume().then(() => msg('resumed'));
-            }
-        } else if (e.key === 'm') {
-            if (fade.ready(t)) fade.fadeScaled(main.gain.value, 0.125, main, t+eps, Fade.VOL); else msg('not ready');
-        } else if (e.key === ',') {
-            if (fade.ready(t)) fade.fadeScaled(main.gain.value, 0.25, main, t+eps, Fade.VOL); else msg('not ready');
-        } else if (e.key === '.') {
-            if (fade.ready(t)) fade.fadeScaled(main.gain.value, 0.5, main, t+eps, Fade.VOL); else msg('not ready');
-        } else if (e.key === '/') {
-            if (fade.ready(t)) fade.fadeScaled(main.gain.value, 1, main, t+eps, Fade.VOL); else msg('not ready');
-        } else {
-            console.log(e.key); // TODO remove
-        }
-    });
-
-    draw.ev(offset => {
-        const t = ctx.currentTime + eps;
-        start(track, t, {
-            offset: offset * track.buf.duration
-        });
-    });
-
-    const intr = setInterval(() => {
-        if (paused) return;
-
-        const t = ctx.currentTime;
-        const endTime = startTime + track.buf.duration;
-
-        draw.bar(track, t - startTime);
-
-        if (t >= endTime) {
-            clearInterval(intr);
-            msg('ended');
-        } else if (cutActive >= 0 && startTime + track.cuts[cutActive].t - t < lookahead) {
-            startScript(track.cuts[cutActive].dest, startTime + track.cuts[cutActive].t);
-        } else if (endTime - t < lookahead && track.next) {
-            startScript(track.next, endTime);
-        }
-
-        if (track.bpm) {
-            const beat = track.bpm[0] * (t - startTime - track.bpm[1]) / 60;
-            metronome.style.backgroundColor = beat % 1 < 0.25 ? beat % 4 < 1 ? '#ff0' : '#4b0' : '#585858';
-        }
-    }, tickRate);
-
-}
+import { Player } from './player.js';
+import { fetchJSON } from './util.js';
 
 window.addEventListener('load', async () => {
+
+    const player = new Player({
+        btns: document.getElementById('btns'),
+        msg: document.getElementById('msg'),
+        metronome: document.getElementById('metronome'),
+        draw: document.getElementById('draw'),
+        status: document.getElementById('status'),
+        notes: document.getElementById('notes'),
+    });
+
     const songData = await fetchJSON('songdata.json');
     for (const k of Object.keys(songData)) songData[k].name = k;
 
@@ -179,7 +19,7 @@ window.addEventListener('load', async () => {
 
     if (location.search) {
         const opts = Object.fromEntries(new URLSearchParams('name=' + location.search.slice(1)).entries());
-        void loadSong(songData[opts.name], opts);
+        void player.load(songData[opts.name], opts);
         return;
     }
 
@@ -191,7 +31,7 @@ window.addEventListener('load', async () => {
         btn.classList.add('hk');
         btn.textContent = k;
         btn.addEventListener('click', () => {
-            void loadSong(songData[k]);
+            void player.load(songData[k]);
         });
         (songData[k].flavor === 'patter' ? patter : singer).appendChild(btn);
     }

@@ -1,4 +1,4 @@
-html, body { background-color: #000; color: #d8d8d8; font: 11pt sans-serif; }
+html, body { background-color: #000; color: #d8d8d8; font: 11pt sans-serif; color-scheme: dark; }
 button { border: 1px solid #585858; background-color: #181818; color: #d8d8d8; font: 8pt monospace; padding: 2px 5px; margin: 0 2px; }
 button:hover { background-color: #282828; }
 button:active { background-color: #383838; }

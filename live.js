@@ -86,7 +86,7 @@ async function loadSong(song, opts = {}) {
                 msg('cut deactivated');
             }
         } else if (e.key === 'r') {
-            start(tracks.intro, t + eps);
+            start(tracks.intro, t + eps, { stopTime: t });
         } else if (e.key === 'e') {
             msg('fadeout');
             fade.fadeOut(main, t+eps, Fade.GLOBAL);

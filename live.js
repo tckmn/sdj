@@ -167,6 +167,8 @@ window.addEventListener('load', async () => {
     const songData = await fetchJSON('songdata.json');
     for (const k of Object.keys(songData)) songData[k].name = k;
 
+    const tipTimerList = await fetchJSON('snd/tiptimer/list.json');
+
     if (location.search) {
         const opts = Object.fromEntries(new URLSearchParams('name=' + location.search.slice(1)).entries());
         void loadSong(songData[opts.name], opts);

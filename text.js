@@ -66,7 +66,7 @@ function renderTag(s, cls, cb) {
 
 function renderSeq(seq, tags) {
     const t = document.createElement('div');
-    t.textContent = tags.map(t => `[${t}] `).join('') + seq.name;
+    t.textContent = tags.map(t => `[${t}] `).join('') + `{${seq.calls.length}} ` + seq.name;
     t.addEventListener('click', () => viewSeq(seq));
     return t;
 }
@@ -126,7 +126,7 @@ window.addEventListener('load', async () => {
     render();
 
     // TODO maybe this goes somewhere else??
-    let intr, prevStart, stored = 0;
+    let intr, prevStart, stored = 0, sound = true;
 
     document.getElementById('start').addEventListener('click', () => {
         const time = document.getElementById('time');
@@ -141,6 +141,10 @@ window.addEventListener('load', async () => {
                 const min = pad(Math.floor(total / 60)+'', 2);
                 const sec = pad((total % 60).toFixed(3), 6);
                 time.textContent = min+':'+sec;
+                if (min >= 10 && sound) {
+                    sound = false;
+                    time.style.backgroundColor = '#f00';
+                }
             }, 33);
         }
     });
@@ -149,7 +153,9 @@ window.addEventListener('load', async () => {
         if (intr) clearInterval(intr);
         intr = prevStart = undefined;
         stored = 0;
+        sound = true;
         time.textContent = '00:00.000';
+        time.style.backgroundColor = '';
     });
 
     document.getElementById('tip').addEventListener('click', () => {
@@ -191,6 +197,10 @@ window.addEventListener('load', async () => {
                 popup.style.left = box.left+'px';
                 document.body.appendChild(popup);
             }
+        } else if (e.key === 'x') {
+            document.getElementById('text').getElementsByTagName('button')[0].click()
+        } else if (e.key === 'c') {
+            document.getElementById('text').getElementsByTagName('button')[1].click()
         }
     });
 });

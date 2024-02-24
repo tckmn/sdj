@@ -14,5 +14,10 @@
  x  - close leftmost sequence
  c  - mark leftmost sequence as called
 
+ m  - 25% volume
+ <  - 50% volume
+ >  - 75% volume
+ /  - 100% volume
+
 spc - pause/play, unpause
 ←/→ - scrub

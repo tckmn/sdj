@@ -1,6 +1,7 @@
 export class Fade {
     static RT = 1;
     static GLOBAL = 10;
+    static VOL = 0.5;
 
     constructor() {
         const curveLen = 48000; // pretty arbitrary
@@ -23,8 +24,13 @@ export class Fade {
     fadeIn(gainNode, t, duration)  { this.fade(this.IN, gainNode, t, duration); }
 
     fade(curve, gainNode, t, duration) {
-        console.log(t, duration);
         gainNode.gain.setValueCurveAtTime(curve, t, duration);
+        this.lastFadeEnd = t + duration;
+    }
+
+    fadeScaled(from, to, gainNode, t, duration) {
+        if (from === to) return;
+        gainNode.gain.setValueCurveAtTime(this.IN.map(x => from + (to-from)*x), t, duration);
         this.lastFadeEnd = t + duration;
     }
 }

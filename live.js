@@ -126,6 +126,14 @@ async function loadSong(song, opts = {}) {
             } else {
                 ctx.resume().then(() => msg('resumed'));
             }
+        } else if (e.key === 'm') {
+            if (fade.ready(t)) fade.fadeScaled(main.gain.value, 0.125, main, t+eps, Fade.VOL); else msg('not ready');
+        } else if (e.key === ',') {
+            if (fade.ready(t)) fade.fadeScaled(main.gain.value, 0.25, main, t+eps, Fade.VOL); else msg('not ready');
+        } else if (e.key === '.') {
+            if (fade.ready(t)) fade.fadeScaled(main.gain.value, 0.5, main, t+eps, Fade.VOL); else msg('not ready');
+        } else if (e.key === '/') {
+            if (fade.ready(t)) fade.fadeScaled(main.gain.value, 1, main, t+eps, Fade.VOL); else msg('not ready');
         } else {
             console.log(e.key); // TODO remove
         }

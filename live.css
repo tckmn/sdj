@@ -28,5 +28,9 @@ button:active { background-color: #383838; }
 #text > div:nth-child(2n) { background-color: #282828; }
 #text p.btns { display: flex; justify-content: space-around; }
 #text p.name { font-weight: bold; font-size: 10pt; text-align: center; }
+#text > div:not(:first-child) { white-space: pre-wrap; }
+
+#notepad { position: fixed; padding: 5px; right: 10px; bottom: 10px; width: 45em; height: 70vh; }
+#notepad.hidden { display: none; }
 
 .hkpop { font: 10pt monospace; position: fixed; background-color: rgba(255, 255, 100, 0.5); color: #181818; padding: 3px; font-weight: bold; }

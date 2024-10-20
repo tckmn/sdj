@@ -1,6 +1,7 @@
 import { fetchJSON, shuffle } from './util.js';
 
-const LS_KEY = 'sdj_seqs_called';
+const LS_SEQS = 'sdj_seqs_called';
+const LS_NOTEPAD = 'sdj_notepad';
 
 // TODO move these globals into a class or something
 let seqData;
@@ -24,7 +25,7 @@ function viewSeq(seq) {
     });
     addbtn('called', () => {
         cont.parentNode.removeChild(cont);
-        localStorage.setItem(LS_KEY, (localStorage.getItem(LS_KEY) || '') + seq.date + '.');
+        localStorage.setItem(LS_SEQS, (localStorage.getItem(LS_SEQS) || '') + seq.date + '.');
         render();
     });
     addbtn('yeet', () => {
@@ -159,7 +160,7 @@ window.addEventListener('load', async () => {
     });
 
     document.getElementById('tip').addEventListener('click', () => {
-        localStorage.setItem(LS_KEY, (localStorage.getItem(LS_KEY) || '') + '|');
+        localStorage.setItem(LS_SEQS, (localStorage.getItem(LS_SEQS) || '') + '|');
     });
 
     for (const ipt of document.getElementById('info').getElementsByTagName('input')) {
@@ -168,6 +169,16 @@ window.addEventListener('load', async () => {
             if (e.key === 'Escape') ipt.blur();
         });
     }
+
+    const notepad = document.getElementById('notepad');
+    notepad.value = localStorage.getItem(LS_NOTEPAD) || '';
+    notepad.addEventListener('keydown', e => {
+        e.stopPropagation();
+        if (e.key === 'Escape') e.target.blur();
+    });
+    notepad.addEventListener('input', e => {
+        localStorage.setItem(LS_NOTEPAD, e.target.value);
+    });
 
     // ok this stuff *definitely* goes somewhere else
     let keymap = {};
@@ -201,6 +212,8 @@ window.addEventListener('load', async () => {
             document.getElementById('text').getElementsByTagName('button')[0].click()
         } else if (e.key === 'c') {
             document.getElementById('text').getElementsByTagName('button')[1].click()
+        } else if (e.key === 'n') {
+            notepad.classList.toggle('hidden');
         }
     });
 });

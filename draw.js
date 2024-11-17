@@ -3,7 +3,8 @@ const colors = {
     waveform:  '#888',
     cut:       ['#00f', '#0f0'],
     cutActive: '#f0f',
-    bar:       '#f00'
+    bar:       '#f00',
+    singer:    '#0ff'
 };
 const widths = {
     bar: 2,
@@ -40,10 +41,22 @@ export class Draw {
         for (let i = 0; i < cw; ++i) {
             this.baseCtx.fillRect(i, ch/2 + wf[i].min*cs, 1, (wf[i].max-wf[i].min)*cs);
         }
+        if (track.bpm && track.bpm[2]) {
+            for (let i = 0; i < 8; ++i) {
+                this.singer(track, i);
+            }
+        }
         for (let i = 0; i < track.cuts.length; ++i) {
             const cut = track.cuts[i];
             this.cut(track, cut, cutActive === i);
         }
+    }
+
+    singer(track, i) {
+        const t = track.bpm[1] + (track.bpm[2] + 64*i) / track.bpm[0] * 60;
+        console.log(t);
+        this.baseCtx.fillStyle = colors.singer;
+        this.baseCtx.fillRect(this.#xpos(track, t) - Math.ceil(widths.cut/2), 0, widths.cut, ch);
     }
 
     cut(track, cut, active) {

@@ -1,5 +1,9 @@
 import { fetchJSON, shuffle } from './util.js';
 
+// TODO put this configuration somewhere usable
+const hotkeys = false;
+const birds = true;
+
 const LS_SEQS = 'sdj_seqs_called';
 const LS_NOTEPAD = 'sdj_notepad';
 
@@ -48,13 +52,12 @@ function viewSeq(seq) {
     calls.classList.add('calls');
     for (const call of seq.calls) {
         const line = document.createElement('p');
-        // TODO configurable
-        line.textContent = call[0]
-            // .replace(/boy/g, 'lark')
-            // .replace(/girl/g, 'robin')
-            // .replace(/BOY/g, 'LARK')
-            // .replace(/GIRL/g, 'ROBIN')
-            ;
+        line.textContent = birds ? call[0]
+            .replace(/boy/g, 'lark')
+            .replace(/girl/g, 'robin')
+            .replace(/BOY/g, 'LARK')
+            .replace(/GIRL/g, 'ROBIN')
+            : call[0];
         line.addEventListener('pointerenter', e => {
             playback.innerHTML = call[1].slice(1).join('\n').replace(/\d[GB]./g, m =>
                 `<span class='role${m[1]}'>${m.replace('<','&lt;').replace('>','&gt;')}</span>`
@@ -140,11 +143,12 @@ function render() {
     }
 
     for (const seq of filtered) {
-        seqsCont.appendChild(renderSeq(seq, seq.tags.filter(t => !yes.has(t))));
+        // intentionally no tagnorm to show unnormalized versions
+        seqsCont.appendChild(renderSeq(seq, seq.tags.filter(t => !tagunion && !yes.has(t))));
     }
 }
 
-const hotkeys = [
+const keylist = [
     'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', 'a', 's', 'd', 'f', 'g',
     'h', 'j', 'k', 'l', 'z', 'x', 'c', 'v', 'b', 'n', 'm',
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
@@ -211,7 +215,7 @@ window.addEventListener('load', async () => {
     // ok this stuff *definitely* goes somewhere else
     let keymap = {};
     document.addEventListener('keydown', e => {
-        if (keymap[e.key]) {
+        if (hotkeys && keymap[e.key]) {
             e.stopImmediatePropagation();
             for (const elt of Array.from(document.getElementsByClassName('hkpop'))) {
                 elt.parentNode.removeChild(elt);
@@ -219,9 +223,9 @@ window.addEventListener('load', async () => {
             if (keymap[e.key].tagName === 'INPUT') keymap[e.key].focus();
             else keymap[e.key].click();
             keymap = {};
-        } else if (e.key === 'f') {
+        } else if (hotkeys && e.key === 'f') {
             e.stopImmediatePropagation();
-            const shuf = shuffle(hotkeys);
+            const shuf = shuffle(keylist);
             for (const elt of document.getElementsByClassName('hk')) {
                 console.log(elt);
                 const box = elt.getBoundingClientRect();

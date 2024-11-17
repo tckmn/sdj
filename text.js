@@ -12,6 +12,7 @@ function pad(s, len) { return s.length < len ? '0'+s : s; }
 
 function viewSeq(seq) {
     const cont = document.createElement('div');
+    cont.classList.add('seqdisp');
 
     const btns = document.createElement('p');
     const addbtn = (lbl, cb) => {
@@ -42,11 +43,38 @@ function viewSeq(seq) {
     name.classList.add('name');
     cont.appendChild(name);
 
+    const playback = document.getElementById('playback');
+    const calls = document.createElement('div');
+    calls.classList.add('calls');
     for (const call of seq.calls) {
         const line = document.createElement('p');
-        line.textContent = call;
-        cont.appendChild(line);
+        // TODO configurable
+        line.textContent = call[0]
+            // .replace(/boy/g, 'lark')
+            // .replace(/girl/g, 'robin')
+            // .replace(/BOY/g, 'LARK')
+            // .replace(/GIRL/g, 'ROBIN')
+            ;
+        line.addEventListener('pointerenter', e => {
+            playback.innerHTML = call[1].slice(1).join('\n').replace(/\d[GB]./g, m =>
+                `<span class='role${m[1]}'>${m.replace('<','&lt;').replace('>','&gt;')}</span>`
+            );
+            const rect = playback.getBoundingClientRect();
+            playback.style.top = (e.clientY-rect.height-20)+'px';
+            playback.style.left = (e.clientX-rect.width-10)+'px';
+            playback.classList.remove('hidden');
+        });
+        line.addEventListener('pointermove', e => {
+            const rect = playback.getBoundingClientRect();
+            playback.style.top = (e.clientY-rect.height-20)+'px';
+            playback.style.left = (e.clientX-rect.width-10)+'px';
+        });
+        line.addEventListener('pointerleave', e => {
+            playback.classList.add('hidden');
+        });
+        calls.appendChild(line);
     }
+    cont.appendChild(calls);
     document.getElementById('text').appendChild(cont);
 }
 

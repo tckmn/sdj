@@ -3,6 +3,7 @@ import { fetchJSON, shuffle } from './util.js';
 // TODO put this configuration somewhere usable
 const hotkeys = false;
 const birds = true;
+const tagunion = false;
 
 const LS_SEQS = 'sdj_seqs_called';
 const LS_NOTEPAD = 'sdj_notepad';
@@ -13,6 +14,7 @@ const yes = new Set(), no = new Set();
 
 function clear(elt) { while (elt.firstChild) elt.removeChild(elt.firstChild); }
 function pad(s, len) { return s.length < len ? '0'+s : s; }
+function tagnorm(t) { return t.split('.')[0]; }
 
 function viewSeq(seq) {
     const cont = document.createElement('div');
@@ -86,6 +88,7 @@ function renderTag(s, cls, cb) {
     const t = document.createElement('span');
     if (typeof cls === 'string') t.classList.add(cls);
     else {
+        if (!tagunion && cls === 0) return document.createTextNode('');
         const lbl = document.createElement('span');
         lbl.textContent = '['+cls+']';
         t.appendChild(lbl);
@@ -108,12 +111,14 @@ function render() {
     const seqsCont = document.getElementById('seqs');
     clear(tagsCont); clear(seqsCont);
 
-    const tags = new Set(seqData.flatMap(x => x.tags));
-    const called = (localStorage.getItem(LS_KEY) || '').split('.');
+    const tags = new Set(seqData.flatMap(x => x.tags).filter(x => x[0] !== '@').map(tagnorm));
+    const called = (localStorage.getItem(LS_SEQS) || '').replace(/\|/g, '').split('.');
     const filtered = seqData.filter(seq => {
         if (called.indexOf(seq.date) !== -1) return false;
-        const ts = new Set(seq.tags);
-        if ([...yes].some(x => !ts.has(x))) return false;
+        const ts = new Set(seq.tags.map(tagnorm));
+        if (tagunion ?
+            yes.size && ![...yes].some(x => ts.has(x)) :
+            [...yes].some(x => !ts.has(x))) return false;
         if ([...no].some(x => ts.has(x))) return false;
         return true;
     });
@@ -134,7 +139,7 @@ function render() {
 
     for (const s of tags) {
         if (yes.has(s) || no.has(s)) continue;
-        tagsCont.appendChild(renderTag(s, filtered.filter(seq => seq.tags.indexOf(s) !== -1).length, e => {
+        tagsCont.appendChild(renderTag(s, (tagunion ? seqData : filtered).filter(seq => seq.tags.map(tagnorm).indexOf(s) !== -1).length, e => {
             e.preventDefault();
             if (e.ctrlKey) no.add(s);
             else yes.add(s);
@@ -144,7 +149,7 @@ function render() {
 
     for (const seq of filtered) {
         // intentionally no tagnorm to show unnormalized versions
-        seqsCont.appendChild(renderSeq(seq, seq.tags.filter(t => !tagunion && !yes.has(t))));
+        seqsCont.appendChild(renderSeq(seq, seq.tags.filter(t => tagunion || !yes.has(t))));
     }
 }
 

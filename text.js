@@ -1,12 +1,43 @@
 import { fetchJSON, shuffle } from './util.js';
 
-// TODO put this configuration somewhere usable
-const hotkeys = false;
-const birds = true;
-const tagunion = false;
-
+const LS_CONFIG = 'sdj_config_';
 const LS_SEQS = 'sdj_seqs_called';
 const LS_NOTEPAD = 'sdj_notepad';
+
+const CONFIG = [
+    {
+        name: 'hotkeys',
+        default: false,
+        onchange: () => {}
+    },
+    {
+        name: 'birds',
+        default: false,
+        onchange: () => {}
+    },
+    {
+        name: 'tagunion',
+        default: false,
+        onchange: () => render()
+    }
+];
+
+const conf = {};
+for (const cdata of CONFIG) {
+    const local = localStorage.getItem(LS_CONFIG + cdata.name);
+    conf[cdata.name] = local === undefined ? cdata.default : local === 'true';
+}
+
+const ACTIONS = [
+    {
+        name: 'copy data',
+        onactivate: () => navigator.clipboard.writeText(localStorage.getItem(LS_SEQS))
+    },
+    {
+        name: 'clear data',
+        onactivate: () => { if (prompt('type "yes" to confirm') === 'yes') localStorage.removeItem(LS_SEQS); }
+    }
+]
 
 // TODO move these globals into a class or something
 let seqData;
@@ -54,7 +85,7 @@ function viewSeq(seq) {
     calls.classList.add('calls');
     for (const call of seq.calls) {
         const line = document.createElement('p');
-        line.textContent = birds ? call[0]
+        line.textContent = conf.birds ? call[0]
             .replace(/boy/g, 'lark')
             .replace(/girl/g, 'robin')
             .replace(/BOY/g, 'LARK')
@@ -88,7 +119,7 @@ function renderTag(s, cls, cb) {
     const t = document.createElement('span');
     if (typeof cls === 'string') t.classList.add(cls);
     else {
-        if (!tagunion && cls === 0) return document.createTextNode('');
+        if (!conf.tagunion && cls === 0) return document.createTextNode('');
         const lbl = document.createElement('span');
         lbl.textContent = '['+cls+']';
         t.appendChild(lbl);
@@ -116,7 +147,7 @@ function render() {
     const filtered = seqData.filter(seq => {
         if (called.indexOf(seq.date) !== -1) return false;
         const ts = new Set(seq.tags.map(tagnorm));
-        if (tagunion ?
+        if (conf.tagunion ?
             yes.size && ![...yes].some(x => ts.has(x)) :
             [...yes].some(x => !ts.has(x))) return false;
         if ([...no].some(x => ts.has(x))) return false;
@@ -139,7 +170,7 @@ function render() {
 
     for (const s of tags) {
         if (yes.has(s) || no.has(s)) continue;
-        tagsCont.appendChild(renderTag(s, (tagunion ? seqData : filtered).filter(seq => seq.tags.map(tagnorm).indexOf(s) !== -1).length, e => {
+        tagsCont.appendChild(renderTag(s, (conf.tagunion ? seqData : filtered).filter(seq => seq.tags.map(tagnorm).indexOf(s) !== -1).length, e => {
             e.preventDefault();
             if (e.ctrlKey) no.add(s);
             else yes.add(s);
@@ -149,7 +180,7 @@ function render() {
 
     for (const seq of filtered) {
         // intentionally no tagnorm to show unnormalized versions
-        seqsCont.appendChild(renderSeq(seq, seq.tags.filter(t => tagunion || !yes.has(t))));
+        seqsCont.appendChild(renderSeq(seq, seq.tags.filter(t => conf.tagunion || !yes.has(t))));
     }
 }
 
@@ -217,10 +248,33 @@ window.addEventListener('load', async () => {
         localStorage.setItem(LS_NOTEPAD, e.target.value);
     });
 
+    const config = document.getElementById('config');
+    for (const cdata of CONFIG) {
+        const btn = document.createElement('button');
+        btn.textContent = cdata.name;
+        btn.classList.add('toggle');
+        btn.classList.toggle('activated', conf[cdata.name]);
+        btn.addEventListener('click', () => {
+            conf[cdata.name] = !conf[cdata.name];
+            localStorage.setItem(LS_CONFIG + cdata.name, conf[cdata.name]);
+            btn.classList.toggle('activated', conf[cdata.name]);
+            cdata.onchange();
+        });
+        config.appendChild(btn);
+    }
+
+    const actions = document.getElementById('actions');
+    for (const adata of ACTIONS) {
+        const btn = document.createElement('button');
+        btn.textContent = adata.name;
+        btn.addEventListener('click', adata.onactivate);
+        actions.appendChild(btn);
+    }
+
     // ok this stuff *definitely* goes somewhere else
     let keymap = {};
     document.addEventListener('keydown', e => {
-        if (hotkeys && keymap[e.key]) {
+        if (conf.hotkeys && keymap[e.key]) {
             e.stopImmediatePropagation();
             for (const elt of Array.from(document.getElementsByClassName('hkpop'))) {
                 elt.parentNode.removeChild(elt);
@@ -228,7 +282,7 @@ window.addEventListener('load', async () => {
             if (keymap[e.key].tagName === 'INPUT') keymap[e.key].focus();
             else keymap[e.key].click();
             keymap = {};
-        } else if (hotkeys && e.key === 'f') {
+        } else if (conf.hotkeys && e.key === 'f') {
             e.stopImmediatePropagation();
             const shuf = shuffle(keylist);
             for (const elt of document.getElementsByClassName('hk')) {

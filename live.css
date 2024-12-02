@@ -3,6 +3,8 @@ body { display: flex; flex-direction: column; margin: 0; padding: 0; height: 100
 button { border: 1px solid #585858; background-color: #181818; color: #d8d8d8; font: 8pt monospace; padding: 2px 5px; margin: 0 2px; }
 button:hover { background-color: #282828; }
 button:active { background-color: #383838; }
+button.toggle { background-color: #7f0707; }
+button.toggle.activated { background-color: #146114; }
 
 #live { display: flex; }
 #live #audio { flex: 1; }

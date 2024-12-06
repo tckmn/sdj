@@ -30,7 +30,7 @@ for (const cdata of CONFIG) {
 
 const ACTIONS = [
     {
-        name: 'copy data',
+        name: `copy data (${(localStorage.getItem(LS_SEQS) || '').split('.').length - 1})`,
         onactivate: () => navigator.clipboard.writeText(localStorage.getItem(LS_SEQS))
     },
     {

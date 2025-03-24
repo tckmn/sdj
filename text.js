@@ -92,7 +92,7 @@ function viewSeq(seq) {
             .replace(/GIRL/g, 'ROBIN')
             : call[0];
         line.addEventListener('pointerenter', e => {
-            playback.innerHTML = call[1].slice(1).join('\n').replace(/\d[GB]./g, m =>
+            playback.innerHTML = call[1].join('\n').replace(/\d[GB]./g, m =>
                 `<span class='role${m[1]}'>${m.replace('<','&lt;').replace('>','&gt;')}</span>`
             );
             const rect = playback.getBoundingClientRect();

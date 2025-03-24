@@ -14,6 +14,14 @@
  x  - close leftmost sequence
  c  - mark leftmost sequence as called
 
+ u  - zoom equivalents / unsequenced fixers
+ i  - inneractive rotation
+ o  - outeractives to outsides
+ p  - all paired snapshot resolves
+
+ k  - swing thru equivalents
+ l  - level calls
+
  n  - toggle notes
 
  m  - 25% volume

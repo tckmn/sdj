@@ -37,8 +37,8 @@ button.toggle.activated { background-color: #146114; }
 #text div.seqdisp .calls { overflow: auto; }
 #text div.seqdisp .calls p { margin: 0; padding: 0.5rem 0; }
 
-#notepad { position: fixed; padding: 5px; right: 10px; bottom: 10px; width: 45em; height: 70vh; }
-#notepad.hidden { display: none; }
+#notepad, #listpad { position: fixed; padding: 5px; right: 10px; bottom: 10px; width: 50em; height: 70vh; }
+#notepad.hidden, #listpad.hidden { display: none; }
 
 #playback { position: fixed; padding: 1rem; background-color: #000; border: 1px dotted #383838; pointer-events: none; }
 #playback.hidden { display: none; }

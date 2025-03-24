@@ -40,7 +40,7 @@ const ACTIONS = [
 ]
 
 // TODO move these globals into a class or something
-let seqData;
+let seqData; let listData;
 const yes = new Set(), no = new Set();
 
 function clear(elt) { while (elt.firstChild) elt.removeChild(elt.firstChild); }
@@ -190,8 +190,16 @@ const keylist = [
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
 ];
 
+function parseListData(txt) {
+    return Object.fromEntries(txt.split(/^%/m).slice(1).map(group => {
+        const idx = group.indexOf('\n');
+        return [group.slice(0, idx), group.slice(idx+1)];
+    }));
+}
+
 window.addEventListener('load', async () => {
     seqData = await fetchJSON('seq.json');
+    listData = parseListData(await (await fetch('lists.txt')).text());
     render();
 
     // TODO maybe this goes somewhere else??
@@ -247,6 +255,10 @@ window.addEventListener('load', async () => {
     notepad.addEventListener('input', e => {
         localStorage.setItem(LS_NOTEPAD, e.target.value);
     });
+
+    const listpad = document.getElementById('listpad');
+    const listmap = { u: 'zoom', i: 'rotate', p: 'snapshot', o: 'centralize', k: 'swingthru', l: 'level' };
+    let curlist;
 
     const config = document.getElementById('config');
     for (const cdata of CONFIG) {
@@ -305,6 +317,14 @@ window.addEventListener('load', async () => {
             document.getElementById('text').getElementsByTagName('button')[1].click()
         } else if (e.key === 'n') {
             notepad.classList.toggle('hidden');
+        } else if (listmap[e.key]) {
+            if (curlist === e.key) {
+                listpad.classList.toggle('hidden');
+            } else {
+                curlist = e.key;
+                listpad.classList.remove('hidden');
+                listpad.value = listData[e.key === 'l' ? 'c2' : listmap[e.key]]; // TODO configurable level
+            }
         }
     });
 });
